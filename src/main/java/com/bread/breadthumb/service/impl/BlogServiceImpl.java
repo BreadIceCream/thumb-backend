@@ -57,6 +57,7 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements Bl
 
     @Scheduled(initialDelay = 3000, fixedDelay = 1000 * 60 * 60 * 24)
     public void loadHotBlog(){
+        log.info("Scheduled Task：Load hot blogs start...");
         // 每天24点，获取过去一天创建的所有blog，存入redis。redis只缓存近期或热点数据
         // 对于点赞数最高的number条blog，设置过期时间为hotExpire，普通blog的过期时间为ordinaryExpire
         List<Blog> yesterdayBlogs = lambdaQuery().ge(Blog::getCreateTime, LocalDate.now().minusDays(1).atTime(0,0,0))
@@ -89,7 +90,7 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements Bl
                 return operations.exec();
             }
         });
-        log.info("redis缓存blog成功...");
+        log.info("Scheduled Task: Load hot blogs to redis successfully...");
     }
 
     @Override

@@ -10,4 +10,6 @@ public class Constant {
 
     public static final String REDIS_BLOG_KEY_PREFIX = "blog:";
     public static final long REDIS_HOT_BLOG_EXPIRE_TIME = 30L;
+
+    public static final String REDIS_TEMP_THUMB_KEY_PREFIX = "thumb:temp:%s";
 }

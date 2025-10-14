@@ -91,6 +91,12 @@
             <artifactId>spring-session-data-redis</artifactId>
         </dependency>
 
+        <!--aspectj-->
+        <dependency>
+            <groupId>org.aspectj</groupId>
+            <artifactId>aspectjweaver</artifactId>
+        </dependency>
+
 
 
     </dependencies>

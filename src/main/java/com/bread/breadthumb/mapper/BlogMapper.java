@@ -3,6 +3,9 @@ package com.bread.breadthumb.mapper;
 import com.bread.breadthumb.model.entity.Blog;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+
+import java.util.Map;
 
 /**
 * @author huang
@@ -12,6 +15,8 @@ import org.apache.ibatis.annotations.Mapper;
 */
 @Mapper
 public interface BlogMapper extends BaseMapper<Blog> {
+
+    void batchUpdateThumbCount(@Param("countMap")Map<Long, Long> countMap);
 
 }
 

@@ -1,6 +1,7 @@
 package com.bread.breadthumb.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.bread.breadthumb.constant.Constant;
 import com.bread.breadthumb.model.entity.Blog;
@@ -11,6 +12,7 @@ import com.bread.breadthumb.service.BlogService;
 import com.bread.breadthumb.mapper.BlogMapper;
 import com.bread.breadthumb.service.ThumbService;
 import com.bread.breadthumb.service.UserService;
+import com.bread.breadthumb.util.RedisKeyUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,24 +50,26 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements Bl
     @Autowired
     private RedisTemplate<String, Object> redisTemplate;
 
-    @Value("${blog.hot.number}")
+    @Value("${blog.most-thumb.number}")
     private int number;
-    @Value("${blog.hot.expire}")
-    private int hotExpire;
-    @Value("${blog.ordinary.expire}")
-    private int ordinaryExpire;
+    @Value("${blog.most-thumb.expire}") // 过期时间，单位为s
+    private int expire;
 
+    //@Scheduled(cron = "0 5 0 * * ?")
     @Scheduled(initialDelay = 3000, fixedDelay = 1000 * 60 * 60 * 24)
     public void loadHotBlog(){
-        log.info("Scheduled Task：Load hot blogs start...");
-        // 每天24点，获取过去一天创建的所有blog，存入redis。redis只缓存近期或热点数据
-        // 对于点赞数最高的number条blog，设置过期时间为hotExpire，普通blog的过期时间为ordinaryExpire
-        List<Blog> yesterdayBlogs = lambdaQuery().ge(Blog::getCreateTime, LocalDate.now().minusDays(1).atTime(0,0,0))
-                .orderByDesc(Blog::getThumbCount).list();
-        log.info("Got {} blogs...", yesterdayBlogs.size());
+        log.info("Scheduled Task：Load yesterday most thumbed blogs start...");
+        // 每天24点，获取过去一天点赞量最高的number条blog，存入redis。
+        LocalDate yesterday = LocalDate.now().minusDays(1);
+        Page<Blog> page = lambdaQuery()
+                .ge(Blog::getCreateTime, yesterday.atTime(0, 0, 0))
+                .le(Blog::getCreateTime, yesterday.atTime(23, 59, 59))
+                .orderByDesc(Blog::getThumbCount).page(Page.of(1, number));
+        List<Blog> blogList = page.getRecords();
+        log.info("Scheduled Task：Got {} blogs...", blogList.size());
         // 采用hash结构，key为blog:blogId，field为字段名，value为字段值
-        Map<String, Map<String, Object>> map = yesterdayBlogs.stream().collect(Collectors.toMap(
-                blog -> Constant.REDIS_BLOG_KEY_PREFIX + blog.getId(),
+        Map<String, Map<String, Object>> map = blogList.stream().collect(Collectors.toMap(
+                blog -> RedisKeyUtil.getBlogKey(blog.getId()),
                 blog -> BeanUtil.beanToMap(blog, false, false)
         ));
         // 使用redisTemplate.execute方法执行批量操作
@@ -73,24 +77,17 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements Bl
             @Override
             public <K, V> List<Object> execute(RedisOperations<K, V> operations) throws DataAccessException {
                 operations.multi();
-                for (int i = 0; i < yesterdayBlogs.size(); i++) {
-                    Long blogId = yesterdayBlogs.get(i).getId();
-                    String key = Constant.REDIS_BLOG_KEY_PREFIX + blogId;
-                    //operations.delete((K) key);
-                    operations.opsForHash().putAll((K) key, map.get(key));
+                for (Map.Entry<String, Map<String, Object>> entry : map.entrySet()) {
+                    String key = entry.getKey();
+                    Map<String, Object> blogEntries = entry.getValue();
+                    operations.opsForHash().putAll((K) key, blogEntries);
                     // 设置过期时间
-                    if (i < number){
-                        log.info("Blog {} is hot", blogId);
-                        operations.expire((K) key, hotExpire + (int)(Math.random()*1000), TimeUnit.SECONDS);
-                    }else {
-                        log.info("Blog {} is ordinary", blogId);
-                        operations.expire((K) key, ordinaryExpire + (int)(Math.random()*1000), TimeUnit.SECONDS);
-                    }
+                    operations.expire((K) key, expire + (int)(Math.random()*1000), TimeUnit.SECONDS);
                 }
                 return operations.exec();
             }
         });
-        log.info("Scheduled Task: Load hot blogs to redis successfully...");
+        log.info("Scheduled Task: Load recent blogs to redis successfully...");
     }
 
     @Override

@@ -1,12 +1,10 @@
 package com.bread.breadthumb.service.impl;
 
-import cn.hutool.core.date.DateTime;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.bread.breadthumb.constant.Constant;
 import com.bread.breadthumb.exception.BusinessException;
 import com.bread.breadthumb.mapper.ThumbMapper;
 import com.bread.breadthumb.model.dto.DoThumbRequest;
-import com.bread.breadthumb.model.entity.Blog;
 import com.bread.breadthumb.model.entity.Thumb;
 import com.bread.breadthumb.model.entity.User;
 import com.bread.breadthumb.model.enums.LuaStatusEnum;
@@ -22,11 +20,7 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.support.TransactionTemplate;
 
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -124,8 +118,8 @@ public class ThumbServiceRedisImpl extends ServiceImpl<ThumbMapper, Thumb> imple
     @Override
     public List<Object> hasThumbRedis(List<Long> blogIds, Long userId) {
         log.info("Check thumbs using redis.Blog ids {}, User {}...", blogIds, userId);
-        List<Object> list = blogIds.stream().map(Object::toString).collect(Collectors.toList());
-        return redisTemplate.opsForHash().multiGet(RedisKeyUtil.getUserThumbKey(userId), list);
+        List<Object> hashFields = blogIds.stream().map(Object::toString).collect(Collectors.toList());
+        return redisTemplate.opsForHash().multiGet(RedisKeyUtil.getUserThumbKey(userId), hashFields);
     }
 
     /**

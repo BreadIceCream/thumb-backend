@@ -40,9 +40,8 @@ public class BlogCacheManager {
     @Autowired
     private BlogService blogService;
 
-    // todo修改Thumb业务中的点赞取消点赞逻辑，修改获取blog的业务逻辑
     // 使用定时任务，每5分钟向redis中写入这个时刻Top K的blog，设置过期时间为10分钟
-    @Scheduled(initialDelay = 1000 * 60 * 5, fixedRate = 1000 * 60 * 5)
+    @Scheduled(initialDelay = 1000 * 10, fixedRate = 1000 * 60 * 5)
     public void syncHotBlog2Redis(){
         log.info("Scheduled Task: load HotBlog to redis start...");
         // 准备写入的Top K Blog

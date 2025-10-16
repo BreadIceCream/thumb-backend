@@ -13,4 +13,5 @@ public class Constant {
 
     public static final String REDIS_TEMP_THUMB_KEY_PREFIX = "thumb:temp:%s";
     public static final String CACHE_BLOG_KEY_PREFIX = "cache:blog:";
+    public static final String BLOG_NOT_FOUND = "该博客不存在";
 }

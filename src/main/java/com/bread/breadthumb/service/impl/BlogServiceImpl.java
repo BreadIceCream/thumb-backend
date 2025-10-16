@@ -4,6 +4,7 @@ import cn.hutool.core.bean.BeanUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.bread.breadthumb.constant.Constant;
+import com.bread.breadthumb.exception.BusinessException;
 import com.bread.breadthumb.model.entity.Blog;
 import com.bread.breadthumb.model.entity.Thumb;
 import com.bread.breadthumb.model.entity.User;
@@ -12,8 +13,10 @@ import com.bread.breadthumb.service.BlogService;
 import com.bread.breadthumb.mapper.BlogMapper;
 import com.bread.breadthumb.service.ThumbService;
 import com.bread.breadthumb.service.UserService;
+import com.bread.breadthumb.util.BlogCacheManager;
 import com.bread.breadthumb.util.RedisKeyUtil;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -49,6 +52,9 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements Bl
 
     @Autowired
     private RedisTemplate<String, Object> redisTemplate;
+
+    @Autowired
+    private BlogCacheManager blogCacheManager;
 
     @Value("${blog.most-thumb.number}")
     private int number;
@@ -93,18 +99,12 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements Bl
     @Override
     public BlogVO getBlogVOById(long blogId, HttpServletRequest request) {
         User loginUser = userService.getLoginUser(request);
-        // 先查询redis, 获取blog
-        Map<Object, Object> entries = redisTemplate.opsForHash().entries(Constant.REDIS_BLOG_KEY_PREFIX + blogId);
-        BlogVO blogVO = new BlogVO();
-        if (!entries.isEmpty()){
-            log.info("redis命中blog {}...", blogId);
-            // 当前blog是近期或热点数据
-            BeanUtil.fillBeanWithMap(entries, blogVO, false);
-        }else {
-            // 缓存未命中，从数据库中查询blog
-            Blog blog = getById(blogId);
-            BeanUtil.copyProperties(blog, blogVO);
+        // 通过blogCacheManager获取blog
+        Blog blog = blogCacheManager.getBlog(blogId);
+        if (blog == null){
+            throw new BusinessException(HttpServletResponse.SC_BAD_REQUEST, Constant.BLOG_NOT_FOUND);
         }
+        BlogVO blogVO = BeanUtil.copyProperties(blog, BlogVO.class);
         Boolean thumbed = thumbService.hasThumbRedis(blogId, loginUser.getId());
         blogVO.setHasThumb(thumbed);
         return blogVO;
@@ -113,6 +113,7 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements Bl
 
     @Override
     public List<BlogVO> getBlogVOList(HttpServletRequest request) {
+        // 直接从数据库中获取所有blog
         List<Blog> blogList = list();
         User loginUser = userService.getLoginUser(request);
         // 当前用户点赞过的blogId

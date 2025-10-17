@@ -6,7 +6,6 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.bread.breadthumb.constant.Constant;
 import com.bread.breadthumb.exception.BusinessException;
 import com.bread.breadthumb.model.entity.Blog;
-import com.bread.breadthumb.model.entity.Thumb;
 import com.bread.breadthumb.model.entity.User;
 import com.bread.breadthumb.model.vo.BlogVO;
 import com.bread.breadthumb.service.BlogService;
@@ -29,7 +28,6 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -54,6 +52,7 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements Bl
     private RedisTemplate<String, Object> redisTemplate;
 
     @Autowired
+    @Lazy
     private BlogCacheManager blogCacheManager;
 
     @Value("${blog.most-thumb.number}")
@@ -63,7 +62,7 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements Bl
 
     //@Scheduled(cron = "0 5 0 * * ?")
     @Scheduled(initialDelay = 3000, fixedDelay = 1000 * 60 * 60 * 24)
-    public void loadHotBlog(){
+    public void loadMostThumbedBlog(){
         log.info("Scheduled Task：Load yesterday most thumbed blogs start...");
         // 每天24点，获取过去一天点赞量最高的number条blog，存入redis。
         LocalDate yesterday = LocalDate.now().minusDays(1);
@@ -73,7 +72,7 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements Bl
                 .orderByDesc(Blog::getThumbCount).page(Page.of(1, number));
         List<Blog> blogList = page.getRecords();
         log.info("Scheduled Task：Got {} blogs...", blogList.size());
-        // 采用hash结构，key为blog:blogId，field为字段名，value为字段值
+        // 采用hash结构存储blog数据，key为blog:blogId，field为字段名，value为字段值
         Map<String, Map<String, Object>> map = blogList.stream().collect(Collectors.toMap(
                 blog -> RedisKeyUtil.getBlogKey(blog.getId()),
                 blog -> BeanUtil.beanToMap(blog, false, false)
@@ -93,7 +92,7 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements Bl
                 return operations.exec();
             }
         });
-        log.info("Scheduled Task: Load recent blogs to redis successfully...");
+        log.info("Scheduled Task: Load yesterday most thumbed blogs to redis successfully...");
     }
 
     @Override

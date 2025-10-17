@@ -16,6 +16,10 @@ import java.util.Map;
 @Mapper
 public interface BlogMapper extends BaseMapper<Blog> {
 
+    /**
+     * 批量更新点赞数
+     * @param countMap key为blogId，value为需要更新的数
+     */
     void batchUpdateThumbCount(@Param("countMap")Map<Long, Long> countMap);
 
 }

@@ -13,6 +13,6 @@ public enum LuaStatusEnum {
     private final long value;
   
     LuaStatusEnum(long value) {
-        this.value = value;  
-    }  
+        this.value = value;
+    }
 }

@@ -4,18 +4,19 @@ import cn.hutool.core.bean.BeanUtil;
 import com.bread.breadthumb.common.HeavyKeeper;
 import com.bread.breadthumb.constant.Constant;
 import com.bread.breadthumb.model.entity.Blog;
+import com.bread.breadthumb.model.enums.LuaStatusEnum;
 import com.bread.breadthumb.service.BlogService;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.dao.DataAccessException;
-import org.springframework.data.redis.core.RedisOperations;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.core.SessionCallback;
+import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
@@ -41,35 +42,42 @@ public class BlogCacheManager {
     private BlogService blogService;
 
     // 使用定时任务，每5分钟向redis中写入这个时刻Top K的blog，设置过期时间为10分钟
-    @Scheduled(initialDelay = 1000 * 10, fixedRate = 1000 * 60 * 5)
+    //@Scheduled(initialDelay = 1000 * 10, fixedRate = 1000 * 60 * 1)
     public void syncHotBlog2Redis(){
         log.info("Scheduled Task: load HotBlog to redis start...");
         // 准备写入的Top K Blog
         List<HeavyKeeper.Item> topK = hotBlogDetector.getTopK();
+        if (topK.isEmpty()){
+            log.info("Scheduled Task: No Hot Blogs...");
+            return;
+        }
         List<Long> blogIds = topK.stream().map(item -> Long.parseLong(item.getKey())).toList();
         List<Blog> blogList = blogService.lambdaQuery().in(Blog::getId, blogIds).list();
         log.info("Scheduled Task: Got {} Hot Blogs...", blogList.size());
         // 采用hash结构，key为blog:blogId，field为字段名，value为字段值
-        Map<String, Map<String, Object>> map = blogList.stream().collect(Collectors.toMap(
+        Map<String, List<String>> arg = blogList.stream().collect(Collectors.toMap(
                 blog -> RedisKeyUtil.getBlogKey(blog.getId()),
-                blog -> BeanUtil.beanToMap(blog, false, false)
-        ));
-        // 使用redisTemplate.execute执行事务保证操作的原子性
-        redisTemplate.execute(new SessionCallback<List<Object>>() {
-            @Override
-            public <K, V> List<Object> execute(RedisOperations<K, V> operations) throws DataAccessException {
-                operations.multi();
-                for (Map.Entry<String, Map<String, Object>> blogRedisKeyMapEntry : map.entrySet()) {
-                    String key = blogRedisKeyMapEntry.getKey();
-                    Map<String, Object> map = blogRedisKeyMapEntry.getValue();
-                    operations.opsForHash().putAll((K) key, map);
-                    // 设置过期时间为10分钟左右
-                    operations.expire((K) key, 60 * 10 + ThreadLocalRandom.current().nextInt(120), TimeUnit.SECONDS);
+                blog -> {
+                    List<String> fieldList = new ArrayList<>();
+                    Map<String, Object> fieldMap = BeanUtil.beanToMap(blog, false, false);
+                    fieldMap.forEach((fieldName, fieldValue) -> {
+                        fieldList.add(fieldName);
+                        fieldList.add(fieldValue.toString());
+                    });
+                    return fieldList;
                 }
-                return operations.exec();
-            }
-        });
-        log.info("Scheduled Task: load HotBlog to redis successfully...");
+        ));
+        List<String> keys = new ArrayList<>(arg.keySet());
+        // 使用redisTemplate.execute执行事务保证操作的原子性
+        long result = redisTemplate.execute(
+                RedisScript.of(new ClassPathResource("templates/SyncHotBlog.lua"), Long.class),
+                keys, arg, 600, 120
+        );
+        if (result == LuaStatusEnum.SUCCESS.getValue()){
+            log.info("Scheduled Task: load HotBlog to redis successfully...");
+        }else {
+            log.error("Scheduled Task: load HotBlog to redis failed...");
+        }
     }
 
     public Blog getBlog(Long blogId){

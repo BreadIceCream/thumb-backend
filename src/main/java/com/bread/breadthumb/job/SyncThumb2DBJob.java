@@ -43,7 +43,7 @@ public class SyncThumb2DBJob {
     private RedisTemplate<String, Object> redisTemplate;
 
     // 每10秒执行一次
-    @Scheduled(fixedRate = 10000)
+//    @Scheduled(fixedRate = 10000)
     public void run(){
         // 获取上一个10秒时间段
         LocalDateTime prev = LocalDateTime.now().minusSeconds(10);

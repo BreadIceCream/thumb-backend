@@ -22,7 +22,7 @@ public class SyncThumb2DBCompensatoryJob {
     @Autowired
     private SyncThumb2DBJob syncThumb2DBJob;
 
-    @Scheduled(cron = "0 30 0 * * ?")
+//    @Scheduled(cron = "0 30 0 * * ?")
     public void run(){
         log.info("Scheduled Task: SyncThumb2DB compensatory job start...");
         // 每天0点30进行检查，获取redis中昨天所有的临时点赞记录。tempThumbKey为 thumb:temp:2025-10-14:10:11:20

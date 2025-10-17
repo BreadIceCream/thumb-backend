@@ -45,21 +45,4 @@ public interface ThumbService extends IService<Thumb> {
      * @return ThumbId列表
      */
     List<Object> hasThumbRedis(List<Long> blogIds, Long userId);
-
-    /**
-     * 判断用户是否已经点赞
-     * @param blogId
-     * @param userId
-     * @return
-     */
-    Boolean hasThumbDb(long blogId, Long userId);
-
-
-    /**
-     * 批量判断用户是否已经点赞
-     * @param blogIds
-     * @param userId
-     * @return Thumb列表
-     */
-    List<Thumb> hasThumbDb(List<Long> blogIds, Long userId);
 }

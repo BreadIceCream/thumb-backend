@@ -30,7 +30,7 @@ import java.util.stream.Collectors;
 * @description 针对表【thumb】的数据库操作Service实现
 * @createDate 2025-10-12 16:02:41
 */
-@Service("thumbServiceDb")
+@Service("thumbServiceDb") // thumb记录直接修改数据库
 @Slf4j
 public class ThumbServiceImpl extends ServiceImpl<ThumbMapper, Thumb> implements ThumbService{
 
@@ -142,28 +142,6 @@ public class ThumbServiceImpl extends ServiceImpl<ThumbMapper, Thumb> implements
         log.info("Check thumbs using redis.Blog ids {}, User {}...", blogIds, userId);
         List<Object> list = blogIds.stream().map(Object::toString).collect(Collectors.toList());
         return redisTemplate.opsForHash().multiGet(Constant.REDIS_USER_THUMB_KEY_PREFIX + userId, list);
-    }
-
-    /**
-     * 查询数据库，判断用户是否已经点赞
-     * @param blogId
-     * @param userId
-     * @return
-     */
-    @Override
-    public Boolean hasThumbDb(long blogId, Long userId) {
-        return lambdaQuery().eq(Thumb::getBlogId, blogId).eq(Thumb::getUserId, userId).exists();
-    }
-
-    /**
-     * 批量查询数据库，判断用户是否已经点赞
-     * @param blogIds
-     * @param userId
-     * @return
-     */
-    @Override
-    public List<Thumb> hasThumbDb(List<Long> blogIds, Long userId) {
-        return lambdaQuery().eq(Thumb::getUserId, userId).in(Thumb::getBlogId, blogIds).list();
     }
 }
 

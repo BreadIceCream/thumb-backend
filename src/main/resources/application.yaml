@@ -1,0 +1,49 @@
+spring:
+  application:
+    name: thumb-backend
+  mvc:
+    servlet:
+      path: /api
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://{your database host}:{your database port}/thumb_db?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf-8&allowMultiQueries=true&useSSL=false&allowPublicKeyRetrieval=true
+    username: {your database username}
+    password: {your database password}
+  data:
+    redis:
+      host: {your redis host}
+      port: {your redis port}
+      password: {your redis password}
+      timeout: 3000
+      database: {your redis database number}
+mybatis-plus:
+  configuration:
+    # 在当前项目中，没有使用下划线命名，所以这里设置为false
+    map-underscore-to-camel-case: false
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+knife4j:
+  enable: true
+  setting:
+    language: zh_cn
+
+blog:
+  most-thumb:
+    number: 10
+    expire: 172800 # 缓存时间，单位秒，2天
+
+server:
+  port: 8090
+
+# 整合 Prometheus + Grafana
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, prometheus
+  metrics:
+    distribution:
+      percentiles:
+        http:
+          server:
+            requests: 0.5, 0.75, 0.9, 0.95, 0.99

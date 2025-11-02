@@ -1,5 +1,7 @@
 # **👍 BreadThumb \- High-Performance Like Service System**
 
+[中文版本](./README-zh.md)
+
 This project is a high-performance backend service designed to handle a "like" feature, similar to what you might find on platforms like Twitter or TikTok. It's built with Spring Boot and employs a sophisticated architecture using Redis, message queues (Pulsar), and various caching strategies to ensure high availability, data consistency, and real-time responsiveness, even under heavy load.
 
 The system has evolved through three main implementation stages to showcase different architectural approaches for handling high-concurrency scenarios:

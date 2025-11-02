@@ -16,6 +16,11 @@ spring:
       password: {your redis password}
       timeout: 3000
       database: {your redis database number}
+      sentinel:
+        master: { your redis master }
+        nodes:
+          - {node list}
+
 mybatis-plus:
   configuration:
     # 在当前项目中，没有使用下划线命名，所以这里设置为false

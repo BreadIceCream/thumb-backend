@@ -20,6 +20,7 @@ public class ThumbController {
     @Autowired
     private ThumbService thumbService;
 
+
     @PostMapping("/do")
     @Operation(summary = "点赞")
     public Result<Boolean> doThumb(@RequestBody DoThumbRequest doThumbRequest, HttpServletRequest request){
